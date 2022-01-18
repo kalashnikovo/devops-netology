@@ -895,3 +895,163 @@ vagrant@vagrant:~$ gzip -t /tmp/new/test.gz
 vagrant@vagrant:~$ echo $?
 0
 ```
+# Домашнее задание к занятию "3.6. Компьютерные сети, лекция 1"
+
+1) Работа c HTTP через телнет
+```bash
+vagrant@vagrant:~$ telnet stackoverflow.com 80
+Trying 151.101.193.69...
+Connected to stackoverflow.com.
+Escape character is '^]'.
+GET /questions HTTP/1.0
+HOST: stackoverflow.com
+
+HTTP/1.1 301 Moved Permanently
+cache-control: no-cache, no-store, must-revalidate
+location: https://stackoverflow.com/questions
+x-request-guid: be4dc91e-e90c-411f-9466-7950c628d2d4
+feature-policy: microphone 'none'; speaker 'none'
+content-security-policy: upgrade-insecure-requests; frame-ancestors 'self' https://stackexchange.com
+Accept-Ranges: bytes
+Date: Tue, 18 Jan 2022 15:07:59 GMT
+Via: 1.1 varnish
+Connection: close
+X-Served-By: cache-fra19146-FRA
+X-Cache: MISS
+X-Cache-Hits: 0
+X-Timer: S1642518479.498207,VS0,VE92
+Vary: Fastly-SSL
+X-DNS-Prefetch-Control: off
+Set-Cookie: prov=cf86cdac-9087-8cd7-8721-53b6229df168; domain=.stackoverflow.com; expires=Fri, 01-Jan-2055 00:00:00 GMT; path=/; HttpOnly
+
+Connection closed by foreign host. 
+```
+
+Получит ответ HTTP 301 Moved Permanently. Запрошенный ресурс был перещен (в данном случае в `https://stackoverflow.com/questions`).
+
+2) Повторите задание 1 в браузере, используя консоль разработчика F12
+
+Первый ответ сервера HTTP 307 Internal Redirect
+```
+Request URL: http://stackoverflow.com/
+Request Method: GET
+Status Code: 307 Internal Redirect
+Referrer Policy: strict-origin-when-cross-origin
+Location: https://stackoverflow.com/
+Non-Authoritative-Reason: HSTS
+```
+Этот код означает, что ресурс был временно перемещён в URL, указанный в Location (`https://stackoverflow.com/`). При этом для перенаправленного запроса тело и метод запроса не будут изменены.
+
+Страница была загружена за 1.89 сек
+Самый долгий запрос `https://sb.scorecardresearch.com/cs/17440561/beacon.js`
+
+3) Какой IP адрес у вас в интернете?
+
+Из соображений безопасности и моей паранойи полный адрес говорить не буду (хоть он и не белый) ☺️
+
+37.78.x.x
+
+4) Какому провайдеру принадлежит ваш IP адрес? Какой автономной системе AS?
+
+В запросе использовался мой реальный публичный IP адрес
+
+Провайдер "Ростелеком", AS12389
+```bash
+vagrant@vagrant:~$ whois -h whois.radb.net 37.78.x.x
+route:          37.78.0.0/16
+descr:          PAO Rostelecom, Macroregional Branch South, Krasnodar, BRAS
+origin:         AS12389
+mnt-by:         STC-MNT
+mnt-by:         ROSTELECOM-MNT
+created:        2015-11-24T04:39:44Z
+last-modified:  2015-11-24T04:39:44Z
+source:         RIPE
+remarks:        ****************************
+remarks:        * THIS OBJECT IS MODIFIED
+remarks:        * Please note that all data that is generally regarded as personal
+remarks:        * data has been removed from this object.
+remarks:        * To view the original object, please query the RIPE Database at:
+remarks:        * http://www.ripe.net/whois
+remarks:        ****************************
+```
+
+5) Через какие сети проходит пакет, отправленный с вашего компьютера на адрес 8.8.8.8? Через какие AS? Воспользуйтесь утилитой traceroute
+
+В Virtual Box traceroute с UDP не работал корректно, пришлось использовать опцию `-I` для ICMP
+
+```bash
+vagrant@vagrant:~$ traceroute -AnI 8.8.8.8
+traceroute to 8.8.8.8 (8.8.8.8), 30 hops max, 60 byte packets
+ 1  10.0.2.2 [*]  0.205 ms  0.169 ms  0.159 ms
+ 2  192.168.77.1 [*]  1.542 ms  1.535 ms  1.487 ms
+ 3  100.66.0.1 [*]  2.586 ms  2.693 ms  2.687 ms
+ 4  * * *
+ 5  * * *
+ 6  * * *
+ 7  * * *
+ 8  * * *
+ 9  74.125.253.109 [AS15169]  38.120 ms  38.151 ms  38.117 ms
+10  216.239.48.85 [AS15169]  44.525 ms  44.675 ms  44.668 ms
+11  * * *
+12  * * *
+13  * * *
+14  * * *
+15  * * *
+16  * * *
+17  * * *
+18  * * *
+19  * * *
+20  8.8.8.8 [AS15169]  41.571 ms  41.710 ms  39.284 ms
+```
+6) Повторите задание 5 в утилите mtr. На каком участке наибольшая задержка - delay?
+
+```bash
+                                                 My traceroute  [v0.93]
+vagrant (10.0.2.15)                                                                            2022-01-18T15:42:59+0000
+Keys:  Help   Display mode   Restart statistics   Order of fields   quit
+                                                                               Packets               Pings
+ Host                                                                        Loss%   Snt   Last   Avg  Best  Wrst StDev
+ 1. AS???    10.0.2.2                                                         0.0%    20    0.3   0.4   0.1   2.4   0.5
+ 2. AS???    192.168.77.1                                                     0.0%    20    1.1   1.2   0.9   1.4   0.2
+ 3. AS???    100.66.0.1                                                       0.0%    20    2.1   2.1   1.7   2.5   0.1
+ 4. AS12389  178.34.130.56                                                   52.6%    20    2.1   2.1   2.0   2.3   0.1
+ 5. (waiting for reply)
+ 6. (waiting for reply)
+ 7. AS15169  108.170.250.146                                                 73.7%    20   21.9  19.4  18.6  21.9   1.4
+ 8. AS15169  142.251.71.194                                                  63.2%    20   41.4  41.8  41.3  43.3   0.7
+ 9. AS15169  74.125.253.109                                                   0.0%    20   33.4  36.3  33.0  61.6   7.2
+10. AS15169  216.239.48.85                                                    0.0%    20   44.4  44.4  44.1  45.4   0.3
+11. (waiting for reply)
+12. (waiting for reply)
+13. (waiting for reply)
+14. (waiting for reply)
+15. (waiting for reply)
+16. (waiting for reply)
+17. (waiting for reply)
+18. (waiting for reply)
+19. (waiting for reply)
+20. AS15169  8.8.8.8                                                         37.5%    17   38.9  40.5  38.7  43.3   1.8
+```
+Наибольшая задержка на `AS15169  216.239.48.85`
+
+7) Какие DNS сервера отвечают за доменное имя dns.google? Какие A записи? воспользуйтесь утилитой dig
+
+```bash
+vagrant@vagrant:~$ dig +short NS dns.google
+ns1.zdns.google.
+ns4.zdns.google.
+ns2.zdns.google.
+ns3.zdns.google.
+
+vagrant@vagrant:~$ dig +short A dns.google
+8.8.4.4
+8.8.8.8
+```
+8) Проверьте PTR записи для IP адресов из задания 7. Какое доменное имя привязано к IP? воспользуйтесь утилитой dig
+
+```bash
+vagrant@vagrant:~$ dig +noall +answer -x 8.8.8.8
+8.8.8.8.in-addr.arpa.   7158    IN      PTR     dns.google.
+vagrant@vagrant:~$ dig +noall +answer -x 8.8.4.4
+4.4.8.8.in-addr.arpa.   43835   IN      PTR     dns.google.
+```
