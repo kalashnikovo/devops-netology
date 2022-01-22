@@ -1055,3 +1055,212 @@ vagrant@vagrant:~$ dig +noall +answer -x 8.8.8.8
 vagrant@vagrant:~$ dig +noall +answer -x 8.8.4.4
 4.4.8.8.in-addr.arpa.   43835   IN      PTR     dns.google.
 ```
+
+# Домашнее задание к занятию "3.7. Компьютерные сети, лекция 2"
+
+1) Проверьте список доступных сетевых интерфейсов на вашем компьютере. Какие команды есть для этого в Linux и в Windows?
+
+Linux - `ip link` \
+Windows Powershell - `Get-NetAdapter` или `Get-NetIPInterface` \
+Windows CMD - `netsh interface show interface` или `ipconfig /all`
+
+```bash
+vagrant@vagrant:~$ ip link
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN mode DEFAULT group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP mode DEFAULT group default qlen 1000
+    link/ether 08:00:27:73:60:cf brd ff:ff:ff:ff:ff:ff
+```
+
+2) Какой протокол используется для распознавания соседа по сетевому интерфейсу? Какой пакет и команды есть в Linux для этого?
+
+Протокол LLDP. В Ubuntu ставится через пакет `lldpd`
+```bash
+sudo apt install lldpd
+```
+
+3) Какая технология используется для разделения L2 коммутатора на несколько виртуальных сетей? Какой пакет и команды есть в Linux для этого? Приведите пример конфига.
+
+Для разделения L2 коммутатора на несколько виртуальных сетей используется технология VLAN (Virtual Local Area Network).
+
+На Linux необходимо проверить наличие модуля 8021q. Если он не подгружен, то выполнить команду `sudo modprobe 8021q`
+```bash
+vagrant@vagrant:~$ lsmod | grep 8021q
+8021q                  32768  0
+garp                   16384  1 8021q
+mrp                    20480  1 8021q
+```
+
+После этого можно установить пакет `vlan` и добавить виртуальный интерфейс через `vconfig`
+
+```bash
+vagrant@vagrant:~$ sudo vconfig add eth0 400
+
+Warning: vconfig is deprecated and might be removed in the future, please migrate to ip(route2) as soon as possible!
+vagrant@vagrant:~$ sudo ip link set eth0.400 up
+vagrant@vagrant:~$ sudo ip a add 192.168.45.5/255.255.255.0 dev eth0.400
+vagrant@vagrant:~$ ip addr
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host
+       valid_lft forever preferred_lft forever
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000
+    link/ether 08:00:27:73:60:cf brd ff:ff:ff:ff:ff:ff
+    inet 10.0.2.15/24 brd 10.0.2.255 scope global dynamic eth0
+       valid_lft 84391sec preferred_lft 84391sec
+    inet6 fe80::a00:27ff:fe73:60cf/64 scope link
+       valid_lft forever preferred_lft forever
+3: eth0.400@eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 08:00:27:73:60:cf brd ff:ff:ff:ff:ff:ff
+    inet 192.168.45.5/24 scope global eth0.400
+       valid_lft forever preferred_lft forever
+    inet6 fe80::a00:27ff:fe73:60cf/64 scope link
+       valid_lft forever preferred_lft forever
+```
+Так как команда `vconfig` находится в статусе deprecated добавить виртуальный интерфейс через `ip`
+
+```bash
+vagrant@vagrant:~$ sudo ip link add link eth0 name eth0.401 type vlan id 401
+vagrant@vagrant:~$ sudo ip link set eth0.401 up
+vagrant@vagrant:~$ sudo ip a add 192.168.50.5/255.255.255.0 dev eth0.401
+vagrant@vagrant:~$ ip a
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host
+       valid_lft forever preferred_lft forever
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000
+    link/ether 08:00:27:73:60:cf brd ff:ff:ff:ff:ff:ff
+    inet 10.0.2.15/24 brd 10.0.2.255 scope global dynamic eth0
+       valid_lft 86168sec preferred_lft 86168sec
+    inet6 fe80::a00:27ff:fe73:60cf/64 scope link
+       valid_lft forever preferred_lft forever
+3: eth0.401@eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 08:00:27:73:60:cf brd ff:ff:ff:ff:ff:ff
+    inet 192.168.50.5/24 scope global eth0.401
+       valid_lft forever preferred_lft forever
+    inet6 fe80::a00:27ff:fe73:60cf/64 scope link
+       valid_lft forever preferred_lft forever
+```
+При такой конфигурации виртуальные интерфейсы удалятся при следующей загрузке системы. Чтобы сделать их постоянными, необходимо отредактировать `Netplan` (или `/etc/network/interfaces` в старых версиях)
+
+```bash
+vagrant@vagrant:~$ sudo nano /etc/netplan/01-netcfg.yaml
+network:
+  version: 2
+  ethernets:
+    eth0:
+      dhcp4: true
+  vlans:
+    eth0.500:
+      id: 500
+      link: eth0
+      addresses: [192.168.70.5/24]
+vagrant@vagrant:~$ sudo netplan apply
+vagrant@vagrant:~$ ip a
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host
+       valid_lft forever preferred_lft forever
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000
+    link/ether 08:00:27:73:60:cf brd ff:ff:ff:ff:ff:ff
+    inet 10.0.2.15/24 brd 10.0.2.255 scope global dynamic eth0
+       valid_lft 86367sec preferred_lft 86367sec
+    inet6 fe80::a00:27ff:fe73:60cf/64 scope link
+       valid_lft forever preferred_lft forever
+3: eth0.500@eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 08:00:27:73:60:cf brd ff:ff:ff:ff:ff:ff
+    inet 192.168.70.5/24 brd 192.168.70.255 scope global eth0.500
+       valid_lft forever preferred_lft forever
+    inet6 fe80::a00:27ff:fe73:60cf/64 scope link
+       valid_lft forever preferred_lft forever
+```
+
+4) Какие типы агрегации интерфейсов есть в Linux? Какие опции есть для балансировки нагрузки? Приведите пример конфига.
+ 
+В Linux существуют Team и Bonding. Балансировка нагрузки осуществляется в следующих режимах
+```
+0 - balance-rr - (round-robin)
+
+1 - active-backup
+
+2 - balance-xor
+
+3 - broadcast
+
+4 - 802.3ad - (dynamic link aggregation)
+
+5 - balance-tlb - (adaptive transmit load balancing)
+
+6 - balance-alb - (adaptive load balancing)
+```
+Конфиг
+
+```bash
+vagrant@vagrant:~$ sudo nano /etc/netplan/01-netcfg.yaml
+network:
+  version: 2
+  ethernets:
+    eth0:
+      dhcp4: true
+    eth1:
+      dhcp4: no
+    eth2:
+      dhcp4: no
+  bonds:
+   bond0:
+    addresses: [192.168.70.5/24]
+    interfaces: [eth1, eth2]
+    parameters:
+      mode: balance-rr
+vagrant@vagrant:~$ sudo netplan apply
+vagrant@vagrant:~$ ip a show bond0
+5: bond0: <BROADCAST,MULTICAST,MASTER,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 0a:20:6c:5c:14:43 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.70.5/24 brd 192.168.70.255 scope global bond0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::820:6cff:fe5c:1443/64 scope link
+       valid_lft forever preferred_lft forever
+```
+5) Сколько IP адресов в сети с маской /29 ? Сколько /29 подсетей можно получить из сети с маской /24. Приведите несколько примеров /29 подсетей внутри сети 10.10.10.0/24.
+
+В сети с маской `/29` всего `8` IP адресов. Из них доступны для устройств - `6`. Один адрес используется для сети и еще один для широковещательного запроса.
+
+Из сети `/24` можно получить `32` подсети `/29`. Например,
+```
+10.10.10.0/29
+10.10.10.8/29
+10.10.10.16/29
+10.10.10.24/29
+10.10.10.32/29
+10.10.10.40/29
+10.10.10.48/29
+10.10.10.56/29
+10.10.10.64/29
+10.10.10.72/29
+10.10.10.80/29
+10.10.10.88/29
+10.10.10.96/29
+```
+6) Задача: вас попросили организовать стык между 2-мя организациями. Диапазоны 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 уже заняты. Из какой подсети допустимо взять частные IP адреса? Маску выберите из расчета максимум 40-50 хостов внутри подсети.
+
+`100.64.0.0/26`
+
+7) Как проверить ARP таблицу в Linux, Windows? Как очистить ARP кеш полностью? Как из ARP таблицы удалить только один нужный IP?
+
+Ubuntu \
+`ip neighbour show` - показать ARP таблицу \
+`ip neighbour del [ip address] dev [interface]` - удалить из ARP таблицы конкретный адрес \
+`ip neighbour flush all` - очищает таблицу ARP
+
+Windows \
+`arp -a` - показать ARP таблицу \
+`arp -d *` - очистить таблицу ARP \
+`arp -d [ip address]` - удалить из ARP таблицы конкретный адрес \
+
+
