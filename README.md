@@ -1496,6 +1496,7 @@ https://drive.google.com/file/d/11M57ywyaHeISlLKq4AUUyJaXx7WiXjDm/view?usp=shari
 1) Установите Bitwarden плагин для браузера. Зарегестрируйтесь и сохраните несколько паролей.
 
 В данный момент не использую менеджеры паролей в браузере. До этого пользовался LastPass
+
 2) Установите Google authenticator на мобильный телефон. Настройте вход в Bitwarden акаунт через Google authenticator OTP.
 
 Для личных аккаунтов использую Microsoft Authenticator.
