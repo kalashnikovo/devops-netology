@@ -66,7 +66,7 @@ Vault v1.9.3 (7dbdd57243a0d8d9d9e07cd01eb657369f8e1b8a)
 ```
 4) Cоздайте центр сертификации и выпустите сертификат для использования его в настройке веб-сервера nginx (срок жизни сертификата - месяц).
 
-Разрешаем работу по HTTP. Для этого в конфиг файле расскомментируем настройки HTTP Listener и закомментируем HTTPS
+Разрешаем работу по HTTP. Для этого в конфиг файле раскомментируем настройки HTTP Listener и закомментируем HTTPS
 ```bash
 vagrant@vagrant:~$ sudo nano /etc/vault.d/vault.hcl
 
@@ -235,3 +235,68 @@ vagrant@vagrant:~$ sudo ln -s /etc/nginx/sites-available/web.devops-netology.com
 8) Откройте в браузере на хосте https адрес страницы, которую обслуживает сервер nginx.
 
 ![img_1.png](img_1.png)
+
+9) Создайте скрипт, который будет генерировать новый сертификат в vault
+Создадим каталоги для скриптов и хранения vault ключей
+```bash
+vagrant@vagrant:~$ sudo mkdir scripts
+vagrant@vagrant:~$ sudo mkdir vault_keys
+vagrant@vagrant:~$ sudo nano vault_keys/key1
+vagrant@vagrant:~$ sudo nano vault_keys/key2
+vagrant@vagrant:~$ sudo nano vault_keys/key3
+vagrant@vagrant:~$ sudo nano vault_keys/root_token
+vagrant@vagrant:~$ sudo chmod 0750 -R vault_keys/
+```
+Пишем скрипт для генерации сертификата
+```bash
+vagrant@vagrant:~$ sudo nano scripts/update_ssl.sh
+vagrant@vagrant:~$ sudo chmod 755 scripts/update_ssl.sh
+```
+Скрипт
+```bash
+#!/usr/bin/env bash
+
+export VAULT_ADDR=http://127.0.0.1:8200
+
+# Check vault sealed status and unseal if true
+a=$(vault status | grep Sealed | awk '{print$2}')
+b="true"
+
+if [ "$a" = "$b" ]
+then
+  vault operator unseal $(cat /home/vagrant/vault_keys/key1) > /dev/null
+  vault operator unseal $(cat /home/vagrant/vault_keys/key2) > /dev/null
+  vault operator unseal $(cat /home/vagrant/vault_keys/key3) > /dev/null
+fi
+
+vault login $(cat /home/vagrant/vault_keys/root_token) > /dev/null
+
+# Generate new certificate
+vault write -format=json pki_int/issue/devops-netology.com common_name="web.devops-netology.com" ttl="720h" > web.json
+
+# Create pem file
+cat web.json | jq -r .data.certificate > /etc/nginx/ssl/web.pem
+cat web.json | jq -r .data.issuing_ca >> /etc/nginx/ssl/web.pem
+
+# Create private key
+cat web.json | jq -r .data.private_key > /etc/nginx/ssl/web.key
+
+# Reload NGINX to apply new certificate
+
+systemctl reload nginx
+```
+Проверяем скрипт. Сертификат до выполнения \
+![img_2.png](img_2.png)
+```bash
+vagrant@vagrant:~$ sudo ./scripts/update_ssl.sh
+```
+Сертификат после выполнения \
+![img_3.png](img_3.png)
+10) Поместите скрипт в crontab, чтобы сертификат обновлялся какого-то числа каждого месяца в удобное для вас время. 
+Будем запускать скрипт 13 числа каждого месяца в 18:00
+```bash
+vagrant@vagrant:~$ sudo crontab -e
+
+00 18 13 * * /home/vagrant/scripts/update_ssl.sh
+```
+
