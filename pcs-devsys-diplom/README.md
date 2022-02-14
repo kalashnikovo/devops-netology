@@ -238,6 +238,11 @@ vagrant@vagrant:~$ sudo ln -s /etc/nginx/sites-available/web.devops-netology.com
 
 9) Создайте скрипт, который будет генерировать новый сертификат в vault
 Создадим каталоги для скриптов и хранения vault ключей
+
+
+**_NOTE:_** Распечатывание сервера через скрипт реализовано только для удобства и используется только на данном тестовом стенде.
+Распечатывание в проде необходимо осуществлять согласно регламентам информационной безопасности (выдача токенов ответственным сотрудникам и ручной ввод).
+
 ```bash
 vagrant@vagrant:~$ sudo mkdir scripts
 vagrant@vagrant:~$ sudo mkdir vault_keys
@@ -247,7 +252,8 @@ vagrant@vagrant:~$ sudo nano vault_keys/key3
 vagrant@vagrant:~$ sudo nano vault_keys/root_token
 vagrant@vagrant:~$ sudo chmod 0750 -R vault_keys/
 ```
-Пишем скрипт для генерации сертификата
+Пишем скрипт для генерации сертификата \
+
 ```bash
 vagrant@vagrant:~$ sudo nano scripts/update_ssl.sh
 vagrant@vagrant:~$ sudo chmod 755 scripts/update_ssl.sh
