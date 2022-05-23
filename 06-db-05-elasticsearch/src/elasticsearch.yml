@@ -1,0 +1,11 @@
+node:
+  name: netology_test
+path:
+  data: /var/lib/data
+xpack.ml.enabled: false
+xpack.security.enabled: false
+xpack.security.enrollment.enabled: false
+xpack.security.http.ssl:
+  enabled: false
+xpack.security.transport.ssl:
+  enabled: false
