@@ -2,29 +2,8 @@
 
 ## Задача 1
 
-В этом задании вы потренируетесь в:
-- установке elasticsearch
-- первоначальном конфигурировании elastcisearch
-- запуске elasticsearch в docker
-
-Используя докер образ [centos:7](https://hub.docker.com/_/centos) как базовый и 
-[документацию по установке и запуску Elastcisearch](https://www.elastic.co/guide/en/elasticsearch/reference/current/targz.html):
-
-- составьте Dockerfile-манифест для elasticsearch
-- соберите docker-образ и сделайте `push` в ваш docker.io репозиторий
-- запустите контейнер из получившегося образа и выполните запрос пути `/` c хост-машины
-
-Требования к `elasticsearch.yml`:
-- данные `path` должны сохраняться в `/var/lib`
-- имя ноды должно быть `netology_test`
-
-В ответе приведите:
-- текст Dockerfile манифеста
-- ссылку на образ в репозитории dockerhub
-- ответ `elasticsearch` на запрос пути `/` в json виде
-
 Dockerfile
-```bash
+```docker
 FROM centos:7
 RUN cd /opt && \
     groupadd elasticsearch && \
@@ -46,8 +25,8 @@ EXPOSE 9200 9300
 ENTRYPOINT ["bin/elasticsearch"]
 ```
 
-Но так как URL elastic у меня недоступны, то пришлось собирать образ с копированием этих файлов с локальной машины
-```yml
+Но так как URL `elastic` у меня недоступны, то пришлось собирать образ с копированием этих файлов с локальной машины
+```docker
 FROM centos:7
 COPY elasticsearch-8.2.0-linux-x86_64.tar.gz  /opt
 COPY elasticsearch-8.2.0-linux-x86_64.tar.gz.sha512  /opt	
@@ -101,11 +80,6 @@ Enter host password for user 'elastic':
 ```
 
 ## Задача 2
-
-В этом задании вы научитесь:
-- создавать и удалять индексы
-- изучать состояние кластера
-- обосновывать причину деградации доступности данных
 
 Ознакомтесь с [документацией](https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-create-index.html) 
 и добавьте в `elasticsearch` 3 индекса, в соответствии со таблицей:
@@ -188,10 +162,6 @@ curl -X DELETE --insecure -u elastic:elastic "https://localhost:9200/ind-1?prett
 curl -X DELETE --insecure -u elastic:elastic "https://localhost:9200/ind-2?pretty"
 curl -X DELETE --insecure -u elastic:elastic "https://localhost:9200/ind-3?pretty"
 ```
-**Важно**
-
-При проектировании кластера elasticsearch нужно корректно рассчитывать количество реплик и шард,
-иначе возможна потеря данных индексов, вплоть до полной, при деградации системы.
 
 ## Задача 3
 
@@ -199,28 +169,110 @@ curl -X DELETE --insecure -u elastic:elastic "https://localhost:9200/ind-3?prett
 - создавать бэкапы данных
 - восстанавливать индексы из бэкапов
 
-Создайте директорию `{путь до корневой директории с elasticsearch в образе}/snapshots`.
+Создали директорию `/opt/elasticsearch-8.2.0/snapshots`. В конфигурационный файл `elasticsearch.yml` внесли параметр `path.repo: ["/opt/elasticsearch-8.2.0/snapshots"]`
 
-Используя API [зарегистрируйте](https://www.elastic.co/guide/en/elasticsearch/reference/current/snapshots-register-repository.html#snapshots-register-repository) 
-данную директорию как `snapshot repository` c именем `netology_backup`.
+Выполнили запрос на регистрацию `snapshot` репозитория
 
-**Приведите в ответе** запрос API и результат вызова API для создания репозитория.
+```bash
+vagrant@ubuntu-20:~/docker/elasticsearch$ curl -X PUT --insecure -u elastic:elastic "https://localhost:9200/_snapshot/netology_backup?pretty" -H 'Content-Type: application/json' -d'
+",
+  "settings": {
+    "location": "/opt/elasticsearch-8.2.0/snapshots"
+  }
+}
+'
+> {
+>   "type": "fs",
+>   "settings": {
+>     "location": "/opt/elasticsearch-8.2.0/snapshots"
+>   }
+> }
+> '
 
-Создайте индекс `test` с 0 реплик и 1 шардом и **приведите в ответе** список индексов.
+{
+  "acknowledged" : true
+}
+```
 
-[Создайте `snapshot`](https://www.elastic.co/guide/en/elasticsearch/reference/current/snapshots-take-snapshot.html) 
-состояния кластера `elasticsearch`.
+Создали индекс `test` с 0 реплик и 1 шардом
 
-**Приведите в ответе** список файлов в директории со `snapshot`ами.
+```bash
+vagrant@ubuntu-20:~/docker/elasticsearch$ curl -X GET --insecure -u elastic:elastic "https://localhost:9200/_cat/indices?v=true"
+health status index uuid                   pri rep docs.count docs.deleted store.size pri.store.size
+green  open   test  Vljz_EYpR5e1E7_ogrOu_w   1   0          0            0       225b           225b
+```
+Сделали snapshot кластера
 
-Удалите индекс `test` и создайте индекс `test-2`. **Приведите в ответе** список индексов.
+```bash
+vagrant@ubuntu-20:~/docker/elasticsearch$ curl -X PUT --insecure -u elastic:elastic "https://localhost:9200/_snapshot/netology_backup/%3Cmy_snapshot_%7Bnow%2Fd%7D%3E?pretty"
+{
+  "accepted" : true
+}
+```
+Список файлов в директории со `snapshot`ами
 
-[Восстановите](https://www.elastic.co/guide/en/elasticsearch/reference/current/snapshots-restore-snapshot.html) состояние
-кластера `elasticsearch` из `snapshot`, созданного ранее. 
+```bash
+[elasticsearch@fe18b5f27b80 snapshots]$ ll
+total 36
+-rw-r--r-- 1 elasticsearch elasticsearch  1107 May 23 14:45 index-0
+-rw-r--r-- 1 elasticsearch elasticsearch     8 May 23 14:45 index.latest
+drwxr-xr-x 5 elasticsearch elasticsearch  4096 May 23 14:45 indices
+-rw-r--r-- 1 elasticsearch elasticsearch 16595 May 23 14:45 meta-y1W7p4kFTO2S7PM8rZ75AQ.dat
+-rw-r--r-- 1 elasticsearch elasticsearch   401 May 23 14:45 snap-y1W7p4kFTO2S7PM8rZ75AQ.dat
+```
 
-**Приведите в ответе** запрос к API восстановления и итоговый список индексов.
+Удалили индекс `test` и создали индекс `test-2`.
 
-Подсказки:
-- возможно вам понадобится доработать `elasticsearch.yml` в части директивы `path.repo` и перезапустить `elasticsearch`
+```bash
+vagrant@ubuntu-20:~/docker/elasticsearch$ curl -X GET --insecure -u elastic:elastic "https://localhost:9200/_cat/indices?v=true"
+health status index uuid                   pri rep docs.count docs.deleted store.size pri.store.size
+green  open   test2 6mmyeUKPSiKsXyPrDVrdGA   1   0          0            0       225b           225b
+```
 
+Получили список доступных `snapshot`ов
+
+```bash
+vagrant@ubuntu-20:~/docker/elasticsearch$ curl -X GET --insecure -u elastic:elastic "https://localhost:9200/_snapshot/netology_backup/*?verbose=false&pretty"
+{
+  "snapshots" : [
+    {
+      "snapshot" : "my_snapshot_2022.05.23",
+      "uuid" : "y1W7p4kFTO2S7PM8rZ75AQ",
+      "repository" : "netology_backup",
+      "indices" : [
+        ".geoip_databases",
+        ".security-7",
+        "test"
+      ],
+      "data_streams" : [ ],
+      "state" : "SUCCESS"
+    }
+  ],
+  "total" : 1,
+  "remaining" : 0
+}
+```
+
+Восстановили состояние кластера `elasticsearch` из `snapshot`, созданного ранее.
+
+```bash
+vagrant@ubuntu-20:~/docker/elasticsearch$ curl -X POST --insecure -u elastic:elastic "https://localhost:9200/_snapshot/netology_backup/my_snapshot_2022.05.23/_restore?pretty" -H 'Content-Type: application/json' -d'
+> {
+>   "indices": "*",
+>   "include_global_state": true
+> }
+> '
+
+{
+  "accepted" : true
+}
+```
+Итоговый список индексов
+
+```bash
+vagrant@ubuntu-20:~/docker/elasticsearch$ curl -X GET --insecure -u elastic:elastic "https://localhost:9200/_cat/indices?v=true"
+health status index uuid                   pri rep docs.count docs.deleted store.size pri.store.size
+green  open   test2 6mmyeUKPSiKsXyPrDVrdGA   1   0          0            0       225b           225b
+green  open   test  d1DglgrzRHaUcZSzggitjw   1   0          0            0       225b           225b
+```
 ---
