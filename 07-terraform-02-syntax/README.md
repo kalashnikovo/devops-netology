@@ -20,7 +20,7 @@ vagrant@ubuntu-20:~/terraform$ yc iam service-account list --folder-id b1g238j6j
 Далее получаем токен сервисного аккаунта
 
 ```console
-export YC_TOKEN=`yc iam create-token`
+vagrant@ubuntu-20:~/terraform$ export YC_TOKEN=`yc iam create-token`
 ```
 
 Инициализируем провайдеры
@@ -45,7 +45,7 @@ rerun this command to reinitialize your working directory. If you forget, other
 commands will detect it and remind you to do so if necessary.
 ```
 
-Выполняем применением применение описанной конфигурации
+Выполняем применением описанной конфигурации
 
 ```console
 vagrant@ubuntu-20:~/terraform$ terraform apply -auto-approve
