@@ -433,6 +433,6 @@ internal_ip_address_vm_1 = [
 
 * [main.tf](./src/main.tf)
 * [s3.tf](./src/s3.tf)
-* [versions.tf](./src/varsions.tf)
+* [versions.tf](./src/versions.tf)
 
 ---
