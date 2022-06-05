@@ -91,7 +91,7 @@ projects:
 
 [main.tf](./src/main.tf)
 
-```json
+```jsonc
 provider "aws" {
   region = "us-east-2"
 }
